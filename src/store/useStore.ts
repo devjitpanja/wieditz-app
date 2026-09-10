@@ -9,7 +9,7 @@ interface AppState {
   videoUrl: string | null;
   savedVideoName: string | null;
   captions: CaptionEntry[];
-  rawChunks: RawChunk[];       // stored so re-split never re-transcribes
+  rawChunks: RawChunk[];
   progress: ProcessingProgress;
   style: CaptionStyle;
   captionSplit: CaptionSplit;
@@ -19,6 +19,7 @@ interface AppState {
   setCaptions: (captions: CaptionEntry[]) => void;
   setRawChunks: (chunks: RawChunk[]) => void;
   updateCaption: (id: string, text: string) => void;
+  updateCaptionTiming: (id: string, start: number, end: number) => void;
   deleteCaption: (id: string) => void;
   setProgress: (progress: Partial<ProcessingProgress>) => void;
   updateStyle: (style: Partial<CaptionStyle>) => void;
@@ -35,6 +36,8 @@ const defaultStyle: CaptionStyle = {
   position: { x: 50, y: 85 },
   bold: false,
   italic: false,
+  animation: "pop",
+  textShadow: undefined,
 };
 
 const defaultProgress: ProcessingProgress = {
@@ -48,6 +51,7 @@ const defaultCaptionSplit: CaptionSplit = {
   mode: "words",
   maxWords: 7,
   maxLines: 2,
+  hinglish: false,
 };
 
 export const useStore = create<AppState>()(
@@ -72,7 +76,6 @@ export const useStore = create<AppState>()(
           progress: defaultProgress,
         }),
 
-      // Restores video without clearing captions — used on page refresh recovery
       restoreVideo: (file, url) =>
         set({ videoFile: file, videoUrl: url }),
 
@@ -83,6 +86,11 @@ export const useStore = create<AppState>()(
       updateCaption: (id, text) =>
         set((state) => ({
           captions: state.captions.map((c) => (c.id === id ? { ...c, text } : c)),
+        })),
+
+      updateCaptionTiming: (id, start, end) =>
+        set((state) => ({
+          captions: state.captions.map((c) => (c.id === id ? { ...c, start, end } : c)),
         })),
 
       deleteCaption: (id) =>
@@ -113,7 +121,6 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "wieditz-session",
-      // Only persist serializable fields — videoFile/videoUrl are runtime-only
       partialize: (state) => ({
         savedVideoName: state.savedVideoName,
         captions: state.captions,

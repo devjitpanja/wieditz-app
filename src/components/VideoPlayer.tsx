@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Play, Pause, Volume2, VolumeX, Maximize2, RotateCcw } from "lucide-react";
 import { CaptionEntry, CaptionStyle, CaptionPosition } from "@/types";
 import { getCurrentCaption } from "@/lib/captions";
 import { cn } from "@/lib/utils";
+
+export interface VideoPlayerRef {
+  seek(time: number): void;
+}
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -12,15 +16,14 @@ interface VideoPlayerProps {
   style: CaptionStyle;
   maxLines?: number;
   onCaptionPositionChange?: (position: CaptionPosition) => void;
+  onTimeUpdate?: (time: number) => void;
+  onDurationChange?: (duration: number) => void;
 }
 
-export default function VideoPlayer({
-  videoUrl,
-  captions,
-  style,
-  maxLines = 2,
-  onCaptionPositionChange,
-}: VideoPlayerProps) {
+const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer(
+  { videoUrl, captions, style, maxLines = 2, onCaptionPositionChange, onTimeUpdate, onDurationChange },
+  ref
+) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -32,8 +35,17 @@ export default function VideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const [isPortrait, setIsPortrait] = useState(false);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Holds drag start state: mouse coords + caption position at drag start
   const dragRef = useRef<{ startX: number; startY: number; captionX: number; captionY: number } | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    seek(time: number) {
+      const video = videoRef.current;
+      if (video) {
+        video.currentTime = time;
+        setCurrentTime(time);
+      }
+    },
+  }));
 
   const hideControlsAfterDelay = useCallback(() => {
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
@@ -53,33 +65,36 @@ export default function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    const onTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
-      setCurrentCaption(getCurrentCaption(captions, video.currentTime));
+    const onTimeUpdateHandler = () => {
+      const t = video.currentTime;
+      setCurrentTime(t);
+      setCurrentCaption(getCurrentCaption(captions, t));
+      onTimeUpdate?.(t);
     };
     const onLoadedMetadata = () => {
-      setDuration(video.duration);
-      // Detect portrait (9:16) vs landscape (16:9) video
+      const d = video.duration;
+      setDuration(d);
       setIsPortrait(video.videoHeight > video.videoWidth);
+      onDurationChange?.(d);
     };
     const onPlay = () => setPlaying(true);
     const onPause = () => { setPlaying(false); setShowControls(true); };
     const onEnded = () => { setPlaying(false); setShowControls(true); };
 
-    video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("timeupdate", onTimeUpdateHandler);
     video.addEventListener("loadedmetadata", onLoadedMetadata);
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener("ended", onEnded);
 
     return () => {
-      video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("timeupdate", onTimeUpdateHandler);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("ended", onEnded);
     };
-  }, [captions]);
+  }, [captions, onTimeUpdate, onDurationChange]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -102,6 +117,7 @@ export default function VideoPlayer({
     const t = Number(e.target.value);
     video.currentTime = t;
     setCurrentTime(t);
+    onTimeUpdate?.(t);
   };
 
   const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,13 +227,25 @@ export default function VideoPlayer({
     [style.position, onCaptionPositionChange]
   );
 
-  const captionStyle: React.CSSProperties = {
-    fontSize: `${style.fontSize}px`,
-    fontFamily: style.fontFamily,
-    color: style.color,
-    backgroundColor: `${style.backgroundColor}${Math.round(style.backgroundOpacity * 255).toString(16).padStart(2, "0")}`,
-    fontWeight: style.bold ? "bold" : "normal",
-    fontStyle: style.italic ? "italic" : "normal",
+  const captionBgColor = `${style.backgroundColor}${Math.round(style.backgroundOpacity * 255).toString(16).padStart(2, "0")}`;
+
+  const animClass =
+    style.animation === "fade" ? "caption-anim-fade" :
+    style.animation === "pop" ? "caption-anim-pop" :
+    style.animation === "slide-up" ? "caption-anim-slide-up" :
+    "";
+
+  const renderCaptionContent = () => {
+    if (!currentCaption) return null;
+    if (style.animation === "word-pop") {
+      const words = currentCaption.text.split(" ");
+      return words.map((word, i) => (
+        <span key={i} className="word-pop-item" style={{ animationDelay: `${i * 0.06}s` }}>
+          {word}{i < words.length - 1 ? " " : ""}
+        </span>
+      ));
+    }
+    return currentCaption.text;
   };
 
   return (
@@ -239,9 +267,10 @@ export default function VideoPlayer({
         playsInline
       />
 
-      {/* Caption overlay — draggable, constrained within the video frame */}
+      {/* Caption overlay */}
       {currentCaption && (
         <div
+          key={currentCaption.id}
           className={cn(
             "absolute pointer-events-auto",
             onCaptionPositionChange ? "cursor-grab active:cursor-grabbing" : "cursor-default"
@@ -251,16 +280,22 @@ export default function VideoPlayer({
             top: `${style.position.y}%`,
             transform: "translate(-50%, -50%)",
             zIndex: 10,
-            maxWidth: "80%",
+            maxWidth: "82%",
           }}
           onMouseDown={onCaptionPositionChange ? onCaptionMouseDown : undefined}
           onTouchStart={onCaptionPositionChange ? onCaptionTouchStart : undefined}
           onClick={(e) => e.stopPropagation()}
         >
           <span
-            className="inline-block text-center px-3 py-1.5 rounded-md"
+            className={cn("inline-block text-center px-3 py-1.5 rounded-md", animClass)}
             style={{
-              ...captionStyle,
+              fontSize: `${style.fontSize}px`,
+              fontFamily: style.fontFamily,
+              color: style.color,
+              backgroundColor: captionBgColor,
+              fontWeight: style.bold ? "bold" : "normal",
+              fontStyle: style.italic ? "italic" : "normal",
+              textShadow: style.textShadow,
               display: "-webkit-box",
               WebkitLineClamp: maxLines,
               WebkitBoxOrient: "vertical",
@@ -268,7 +303,7 @@ export default function VideoPlayer({
               lineHeight: "1.4",
             }}
           >
-            {currentCaption.text}
+            {renderCaptionContent()}
           </span>
         </div>
       )}
@@ -281,7 +316,6 @@ export default function VideoPlayer({
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Seek bar */}
         <input
           type="range"
           min={0}
@@ -322,7 +356,7 @@ export default function VideoPlayer({
         </div>
       </div>
 
-      {/* Big play/pause icon flash */}
+      {/* Big play icon when paused */}
       {!playing && duration > 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center">
@@ -332,4 +366,6 @@ export default function VideoPlayer({
       )}
     </div>
   );
-}
+});
+
+export default VideoPlayer;

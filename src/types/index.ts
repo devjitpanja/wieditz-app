@@ -10,6 +10,8 @@ export interface CaptionPosition {
   y: number; // percentage (0–100) from top, center of caption
 }
 
+export type CaptionAnimation = "none" | "fade" | "pop" | "slide-up" | "word-pop";
+
 export interface CaptionStyle {
   fontSize: number;
   fontFamily: string;
@@ -19,6 +21,8 @@ export interface CaptionStyle {
   position: CaptionPosition;
   bold: boolean;
   italic: boolean;
+  animation: CaptionAnimation;
+  textShadow?: string;
 }
 
 export type ProcessingStatus =
@@ -56,6 +60,7 @@ export interface CaptionSplit {
   mode: SplitMode;
   maxWords: number;  // words per caption card (mode=words)
   maxLines: number;  // 1 or 2 display lines per card
+  hinglish: boolean; // transliterate Devanagari to Latin script
 }
 
 export interface RawChunk {

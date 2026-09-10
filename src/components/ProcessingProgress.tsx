@@ -46,7 +46,7 @@ export default function ProcessingProgress({ progress }: Props) {
                     !done && !active && "bg-white/10 text-white/30"
                   )}
                 >
-                  {done ? <CheckCircle2 className="w-4 h-4" /> : active ? <Loader2 className="w-4 h-4 animate-spin" /> : i + 1}
+                  {done || (active && step.key === "done") ? <CheckCircle2 className="w-4 h-4" /> : active ? <Loader2 className="w-4 h-4 animate-spin" /> : i + 1}
                 </div>
                 <span
                   className={cn(

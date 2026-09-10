@@ -1,8 +1,8 @@
 "use client";
 
-import { CaptionStyle } from "@/types";
+import { CaptionStyle, CaptionAnimation } from "@/types";
 import { cn } from "@/lib/utils";
-import { Bold, Italic, AlignVerticalJustifyEnd, AlignVerticalJustifyCenter, AlignVerticalJustifyStart, Move } from "lucide-react";
+import { Bold, Italic, AlignVerticalJustifyEnd, AlignVerticalJustifyCenter, AlignVerticalJustifyStart, Move, Sparkles } from "lucide-react";
 
 interface Props {
   style: CaptionStyle;
@@ -25,10 +25,152 @@ const POSITION_PRESETS = [
   { label: "Bottom", icon: AlignVerticalJustifyEnd, x: 50, y: 85 },
 ];
 
+const ANIMATIONS: { value: CaptionAnimation; label: string; emoji: string }[] = [
+  { value: "none", label: "None", emoji: "—" },
+  { value: "fade", label: "Fade", emoji: "✨" },
+  { value: "pop", label: "Pop", emoji: "💥" },
+  { value: "slide-up", label: "Slide Up", emoji: "⬆️" },
+  { value: "word-pop", label: "Word Pop", emoji: "🔤" },
+];
+
+interface StylePreset {
+  name: string;
+  style: Partial<CaptionStyle>;
+}
+
+const STYLE_PRESETS: StylePreset[] = [
+  {
+    name: "Bold Yellow",
+    style: {
+      fontSize: 30,
+      fontFamily: "Impact, sans-serif",
+      color: "#ffff00",
+      backgroundColor: "#000000",
+      backgroundOpacity: 0,
+      bold: true,
+      italic: false,
+      animation: "pop",
+      textShadow: "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000",
+    },
+  },
+  {
+    name: "Clean White",
+    style: {
+      fontSize: 24,
+      fontFamily: "Inter, sans-serif",
+      color: "#ffffff",
+      backgroundColor: "#000000",
+      backgroundOpacity: 0.75,
+      bold: true,
+      italic: false,
+      animation: "fade",
+      textShadow: undefined,
+    },
+  },
+  {
+    name: "Neon Green",
+    style: {
+      fontSize: 26,
+      fontFamily: "Inter, sans-serif",
+      color: "#00ff88",
+      backgroundColor: "#000000",
+      backgroundOpacity: 0.6,
+      bold: true,
+      italic: false,
+      animation: "pop",
+      textShadow: "0 0 8px #00ff88, 0 0 20px #00ff8866",
+    },
+  },
+  {
+    name: "Word Pop",
+    style: {
+      fontSize: 28,
+      fontFamily: "Inter, sans-serif",
+      color: "#ffffff",
+      backgroundColor: "#7c3aed",
+      backgroundOpacity: 0.85,
+      bold: true,
+      italic: false,
+      animation: "word-pop",
+      textShadow: undefined,
+    },
+  },
+  {
+    name: "Minimal",
+    style: {
+      fontSize: 20,
+      fontFamily: "Inter, sans-serif",
+      color: "#ffffff",
+      backgroundColor: "#000000",
+      backgroundOpacity: 0,
+      bold: false,
+      italic: false,
+      animation: "slide-up",
+      textShadow: "1px 1px 4px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.9)",
+    },
+  },
+  {
+    name: "Reels Bold",
+    style: {
+      fontSize: 32,
+      fontFamily: "Impact, sans-serif",
+      color: "#ffffff",
+      backgroundColor: "#000000",
+      backgroundOpacity: 0,
+      bold: false,
+      italic: false,
+      animation: "word-pop",
+      textShadow: "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000",
+    },
+  },
+];
+
 export default function CaptionStyler({ style, onChange }: Props) {
   return (
     <div className="space-y-5">
       <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider">Caption Style</h3>
+
+      {/* High-engagement presets */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-2">
+          <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+          <label className="text-xs text-white/50">Style Presets</label>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {STYLE_PRESETS.map((preset) => (
+            <button
+              key={preset.name}
+              onClick={() => onChange(preset.style)}
+              className="px-2.5 py-2 rounded-lg text-xs bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all text-left truncate"
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Animation */}
+      <div>
+        <label className="text-xs text-white/50 block mb-1.5">Animation</label>
+        <div className="grid grid-cols-5 gap-1">
+          {ANIMATIONS.map((a) => (
+            <button
+              key={a.value}
+              onClick={() => onChange({ animation: a.value })}
+              title={a.label}
+              className={cn(
+                "py-2 rounded-lg flex flex-col items-center gap-0.5 text-[10px] transition-all",
+                style.animation === a.value
+                  ? "bg-violet-500 text-white"
+                  : "bg-white/5 text-white/50 hover:bg-white/10"
+              )}
+            >
+              <span className="text-sm leading-none">{a.emoji}</span>
+              <span className="leading-none">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Font size */}
       <div>
@@ -98,7 +240,7 @@ export default function CaptionStyler({ style, onChange }: Props) {
         <label className="text-xs text-white/50 block mb-1.5">Position</label>
         <div className="flex items-center gap-1.5 mb-2 text-xs text-white/30 bg-white/5 rounded-lg px-2.5 py-2">
           <Move className="w-3 h-3 flex-shrink-0" />
-          <span>Drag the caption on the video to reposition it freely</span>
+          <span>Drag the caption on the video to reposition it</span>
         </div>
         <div className="flex gap-1.5">
           {POSITION_PRESETS.map(({ label, icon: Icon, x, y }) => (

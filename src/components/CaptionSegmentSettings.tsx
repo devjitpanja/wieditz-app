@@ -2,6 +2,7 @@
 
 import { CaptionSplit, SplitMode } from "@/types";
 import { cn } from "@/lib/utils";
+import { Languages } from "lucide-react";
 
 interface Props {
   split: CaptionSplit;
@@ -99,6 +100,45 @@ export default function CaptionSegmentSettings({ split, captionCount, hasRawChun
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Hinglish toggle */}
+      <div>
+        <button
+          disabled={!hasRawChunks}
+          onClick={() => onChange({ hinglish: !split.hinglish })}
+          className={cn(
+            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all text-sm",
+            !hasRawChunks && "opacity-40 cursor-not-allowed",
+            split.hinglish
+              ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
+              : "bg-white/5 border-white/10 text-white/50 hover:bg-white/8 hover:text-white/70"
+          )}
+        >
+          <Languages className="w-4 h-4 flex-shrink-0" />
+          <div className="text-left flex-1">
+            <div className="font-medium leading-none mb-0.5">Hinglish Captions</div>
+            <div className="text-[10px] opacity-70">Romanize Hindi → Latin script</div>
+          </div>
+          <div
+            className={cn(
+              "w-8 h-4 rounded-full flex-shrink-0 transition-all relative",
+              split.hinglish ? "bg-amber-500" : "bg-white/20"
+            )}
+          >
+            <div
+              className={cn(
+                "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all",
+                split.hinglish ? "left-4" : "left-0.5"
+              )}
+            />
+          </div>
+        </button>
+        {split.hinglish && (
+          <p className="text-[10px] text-amber-400/70 mt-1.5 px-1">
+            Hindi text will be converted to Hinglish (e.g. "नमस्ते" → "Namaste"). Requires re-generating captions.
+          </p>
+        )}
       </div>
     </div>
   );
